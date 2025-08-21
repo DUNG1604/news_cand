@@ -91,7 +91,7 @@ const AdminLayout = ({ children }) => {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 bg-white shadow-sm min-h-screen">
+        <aside className="w-64 bg-white shadow-sm min-h-[calc(100vh-81px)]">
           <nav className="p-4">
             <ul className="space-y-2">
               {menuItems.map((item) => (

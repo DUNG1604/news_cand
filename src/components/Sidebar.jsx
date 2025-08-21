@@ -41,48 +41,68 @@ const Sidebar = ({ onChapterSelect, searchQuery, data }) => {
     }));
   };
 
+  // Hàm tìm path từ root đến item
+  const findPathToId = (items, targetId, path = []) => {
+    for (let item of items) {
+      if (item.id === targetId) return [...path, item.id];
+      if (item.children && item.children.length > 0) {
+        const childPath = findPathToId(item.children, targetId, [...path, item.id]);
+        if (childPath) return childPath;
+      }
+    }
+    return null;
+  };
+
   const handleItemClick = async (item) => {
     console.log(item);
     
-    if (item.children && item.children.length > 0) {
-      toggleExpanded(item.id); // toggle mở/đóng nhánh
-    } else {
-      // Item không có children - gọi API để lấy content
-      setLoading(true);
-      clearError();
-      try {
-        const response = await sectionPageService.getSectionById(item.id);
-        if (response.data && response.data.data) {
-          const sectionData = response.data.data[0];
-          // Tạo object chapter với data từ API
-          const chapterData = {
-            ...sectionData,
-            id: item.id, // Giữ nguyên ID của menu item để active đúng
-            title: item.name,
-            pageNumber: sectionData.index || 1,
-            sectionIcon: "📄"
-          };
-          onChapterSelect && onChapterSelect(chapterData);
+    // Cho phép click vào cả item cha và con
+    setLoading(true);
+    clearError();
+    
+    try {
+      // Sử dụng API getSectionPageBySectionId thay vì getSectionById
+      const response = await sectionPageService.getSectionPageBySectionId(item.id);
+      if (response.data && response.data.data && response.data.data.length > 0) {
+        const sectionData = response.data.data[0];
+        // Tạo object chapter với data từ API
+        const chapterData = {
+          ...sectionData,
+          id: item.id, // Giữ nguyên ID của menu item để active đúng
+          title: item.name,
+          pageNumber: sectionData.index || 1,
+          sectionIcon: "📄"
+        };
+        onChapterSelect && onChapterSelect(chapterData);
+      } else {
+        // Nếu không có data, vẫn toggle expand cho item cha
+        if (item.children && item.children.length > 0) {
+          toggleExpanded(item.id);
         }
-      } catch (error) {
-        console.error('Error fetching section content:', error);
-        setError('Không thể tải nội dung. Vui lòng thử lại sau.');
+      }
+    } catch (error) {
+      console.error('Error fetching section content:', error);
+      setError('Không thể tải nội dung. Vui lòng thử lại sau.');
+      
+      // Fallback: toggle expand cho item cha nếu có children
+      if (item.children && item.children.length > 0) {
+        toggleExpanded(item.id);
+      } else if (item.content && item.pageNumber) {
         // Fallback: sử dụng data có sẵn nếu có
-        if (item.content && item.pageNumber) {
-          onChapterSelect && onChapterSelect(item);
-        }
-      } finally {
-        setLoading(false);
+        onChapterSelect && onChapterSelect(item);
       }
-      // Multi-branch expand: chỉ bổ sung các node cha vào expandedItems, không đóng các nhánh khác
-      const path = findPathToId(data, item.id);
-      if (path) {
-        setExpandedItems(prev => {
-          const newExpanded = { ...prev };
-          path.forEach(id => { newExpanded[id] = true; });
-          return newExpanded;
-        });
-      }
+    } finally {
+      setLoading(false);
+    }
+    
+    // Multi-branch expand: chỉ bổ sung các node cha vào expandedItems, không đóng các nhánh khác
+    const path = findPathToId(data, item.id);
+    if (path) {
+      setExpandedItems(prev => {
+        const newExpanded = { ...prev };
+        path.forEach(id => { newExpanded[id] = true; });
+        return newExpanded;
+      });
     }
   };
 
@@ -100,7 +120,7 @@ const Sidebar = ({ onChapterSelect, searchQuery, data }) => {
     const hasChildren = item.children && item.children.length > 0;
     const isHovered = hoveredItem === item.id;
     const isSelected = selectedChapter && selectedChapter.id === item.id;
-    const isItemLoading = isLoading && !hasChildren;
+    const isItemLoading = isLoading && selectedChapter && selectedChapter.id === item.id;
     const paddingLeft = `${depth * 16 + 16}px`;
 
     return (
@@ -125,13 +145,13 @@ const Sidebar = ({ onChapterSelect, searchQuery, data }) => {
             {item.name}
           </span>
           {/* Expand/Collapse indicator */}
-          {hasChildren && (
+          {hasChildren && !isItemLoading && (
             <span className={`ml-2 transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`}>
               ▶
             </span>
           )}
-          {/* Loading indicator for items without children */}
-          {!hasChildren && isItemLoading && (
+          {/* Loading indicator for all items */}
+          {isItemLoading && (
             <span className="ml-2 text-yellow-600 animate-spin">⏳</span>
           )}
         </div>

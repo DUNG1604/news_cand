@@ -1,67 +1,49 @@
 import React, { useState, useEffect } from 'react';
+import AdminLayout from '../../layout/AdminLayout';
+import { sectionPageService } from '../../services/SectionPageService';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
-import AdminLayout from '../../layout/AdminLayout';
 import { menuService } from '../../services/MenuService';
-import { sectionService } from '../../services/SectionService';
 
 const Articles = () => {
-  const [articles, setArticles] = useState([]);
-  const [menus, setMenus] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [editingArticle, setEditingArticle] = useState(null);
-  const [formData, setFormData] = useState({
-    index: 1,
-    name: '',
-    parentId: '',
-    sectionPages: [
-      {
-        index: 1,
-        content: '',
-        media: ['string']
-      }
-    ]
-  });
+  const [sectionPages, setSectionPages] = useState([]);
+  const [showSPModal, setShowSPModal] = useState(false);
+  const [editingSP, setEditingSP] = useState(null);
+  const [spForm, setSpForm] = useState({ content: '' });
+  const [showAddSPModal, setShowAddSPModal] = useState(false);
+  const [addForm, setAddForm] = useState({ sectionId: '', content: '' });
+  const [categories, setCategories] = useState([]);
 
   // Load data from API
   useEffect(() => {
-    // Load menus from API
-    loadMenus();
+    loadSectionPages();
+    loadCategories();
   }, []);
 
-  const loadMenus = async () => {
+  const loadSectionPages = async () => {
     try {
-      const response = await menuService.getMenu();
-      if (response.data.data) {
-        setMenus(response.data.data);
-      }
+      const response = await sectionPageService.getSectionPage({ page: 1, limit: 100 });
+      const items = response?.data?.data?.content || response?.data?.content || [];
+      setSectionPages(items);
     } catch (error) {
-      console.error('Error loading menus:', error);
+      console.error('Error loading section pages:', error);
     }
   };
 
-  // Function to flatten menu tree with proper indentation
+  const loadCategories = async () => {
+    try {
+      const res = await menuService.getMenu();
+      setCategories(res?.data?.data || []);
+    } catch (err) {
+      console.error('Error loading categories:', err);
+    }
+  };
+
   const flattenMenus = (menuList, level = 0) => {
     let flattened = [];
-    menuList.forEach(menu => {
-      // Create prefix based on level
-      let prefix = '';
-      if (level === 0) {
-        prefix = '📁 '; // Root level
-      } else if (level === 1) {
-        prefix = '├─ '; // First level child
-      } else {
-        prefix = '│  '.repeat(level - 1) + '├─ '; // Deeper levels
-      }
-      
-      // Add current menu with prefix
-      flattened.push({
-        ...menu,
-        displayName: prefix + menu.name,
-        level: level
-      });
-      
-      // Add children if they exist
+    (menuList || []).forEach(menu => {
+      let prefix = level === 0 ? '' : '│  '.repeat(Math.max(0, level - 1)) + '├─ ';
+      flattened.push({ ...menu, displayName: prefix + menu.name, level });
       if (menu.children && menu.children.length > 0) {
         flattened = flattened.concat(flattenMenus(menu.children, level + 1));
       }
@@ -69,122 +51,51 @@ const Articles = () => {
     return flattened;
   };
 
-  // Get flattened menu list for dropdown
-  const getFlattenedMenus = () => {
-    return flattenMenus(menus);
+  
+
+  const formatDateDDMMYYYY = (dateString) => {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
+  const truncate = (text, max = 120) => {
+    if (!text) return '';
+    return text.length > max ? text.slice(0, max) + '…' : text;
+  };
 
+  const handleEditSP = (sp) => {
+    setEditingSP(sp);
+    setSpForm({ content: sp?.content || '' });
+    setShowSPModal(true);
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+  const handleDeleteSP = async (id) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa nội dung này?')) return;
     try {
-      if (editingArticle) {
-        // Update existing article using sectionService
-        const payload = {
-          index: Number(formData.index),
-          name: formData.name,
-          parentId: formData.parentId ? Number(formData.parentId) : null,
-          sectionPages: formData.sectionPages.map((p, idx) => ({
-            index: Number(p.index) || idx + 1,
-            content: p.content,
-            media: p.media.filter(Boolean)
-          }))
-        };
-        await sectionService.updateSection(editingArticle.id, payload);
-      } else {
-        // Add new article using sectionService
-        const payload = {
-          index: Number(formData.index),
-          name: formData.name,
-          parentId: formData.parentId ? Number(formData.parentId) : null,
-          sectionPages: formData.sectionPages.map((p, idx) => ({
-            index: Number(p.index) || idx + 1,
-            content: p.content,
-            media: p.media.filter(Boolean)
-          }))
-        };
-        await sectionService.createSection(payload);
-      }
-
-      // Reload articles from API
-      await loadMenus();
-      setShowModal(false);
-      setEditingArticle(null);
-      setFormData({
-        index: 1,
-        name: '',
-        parentId: '',
-        sectionPages: [
-          {
-            index: 1,
-            content: '',
-            media: ['string']
-          }
-        ]
-      });
+      await sectionPageService.deleteSectionPage(id);
+      await loadSectionPages();
     } catch (error) {
-      console.error('Error saving article:', error);
-      alert('Có lỗi xảy ra khi lưu bài viết');
+      console.error('Error deleting section page:', error);
+      alert('Không thể xóa nội dung');
     }
   };
 
-  const handleEdit = (article) => {
-    setEditingArticle(article);
-    setFormData({
-      index: article.index || 1,
-      name: article.name,
-      parentId: article.parentId || '',
-      sectionPages: article.sectionPages || [
-        {
-          index: 1,
-          content: article.content || '',
-          media: ['string']
-        }
-      ]
-    });
-    setShowModal(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
-      try {
-        await sectionService.deleteSection(id);
-        await loadMenus();
-      } catch (error) {
-        console.error('Error deleting article:', error);
-        alert('Có lỗi xảy ra khi xóa bài viết');
-      }
+  const handleSubmitSP = async (e) => {
+    e.preventDefault();
+    if (!editingSP) return;
+    try {
+      await sectionPageService.updateSectionPage(editingSP.id, { content: spForm.content });
+      await loadSectionPages();
+      setShowSPModal(false);
+      setEditingSP(null);
+    } catch (error) {
+      console.error('Error updating section page:', error);
+      alert('Không thể cập nhật nội dung');
     }
-  };
-
-  const handleAdd = () => {
-    setEditingArticle(null);
-    setFormData({
-      index: 1,
-      name: '',
-      parentId: '',
-      sectionPages: [
-        {
-          index: 1,
-          content: '',
-          media: ['string']
-        }
-      ]
-    });
-    setShowModal(true);
-  };
-
-  const getCategoryName = (parentId) => {
-    if (!parentId) return 'Không có';
-    const flattenedMenus = getFlattenedMenus();
-    const category = flattenedMenus.find(cat => cat.id === parseInt(parentId));
-    return category ? category.name : 'Không xác định';
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('vi-VN');
   };
 
   return (
@@ -197,7 +108,7 @@ const Articles = () => {
             <p className="text-gray-600 mt-1">Quản lý nội dung các bài viết trong cẩm nang</p>
           </div>
           <button
-            onClick={handleAdd}
+            onClick={() => { setShowAddSPModal(true); setAddForm({ sectionId: '', content: '' }); }}
             className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
           >
             <span>➕</span>
@@ -205,65 +116,38 @@ const Articles = () => {
           </button>
         </div>
 
-        {/* Articles List */}
+        
+
+        {/* Section Pages List */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Bài viết
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Danh mục
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Trạng thái
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ngày tạo
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Thao tác
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên danh mục</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nội dung</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày tạo</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {menus.map((article) => (
-                  <tr key={article.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {article.name}
-                        </div>
-                        <div className="text-sm text-gray-500 mt-1">
-                          Index: {article.index}
-                        </div>
-                      </div>
+                {sectionPages.map((sp) => (
+                  <tr key={sp.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{sp.sectionName}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700 max-w-[600px]">
+                      <div className="max-h-40 overflow-hidden" dangerouslySetInnerHTML={{ __html: sp.content }} />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {getCategoryName(article.parentId)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Hoạt động
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      ID: {article.id}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDateDDMMYYYY(sp.createDate)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => handleEdit(article)}
+                          onClick={() => handleEditSP(sp)}
                           className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded hover:bg-blue-50"
                         >
                           ✏️ Sửa
                         </button>
                         <button
-                          onClick={() => handleDelete(article.id)}
+                          onClick={() => handleDeleteSP(sp.id)}
                           className="text-red-600 hover:text-red-800 px-3 py-1 rounded hover:bg-red-50"
                         >
                           🗑️ Xóa
@@ -272,150 +156,60 @@ const Articles = () => {
                     </td>
                   </tr>
                 ))}
+                {sectionPages.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-6 text-center text-sm text-gray-500">Không có dữ liệu</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Modal */}
-        {showModal && (
+        {/* Modal edit Section Page */}
+        {showSPModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <h2 className="text-xl font-bold mb-4">
-                {editingArticle ? 'Sửa bài viết' : 'Thêm bài viết mới'}
-              </h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tên bài viết
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Index
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.index}
-                      onChange={(e) => setFormData({...formData, index: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      required
-                    />
-                  </div>
-                </div>
-
+            <div className="bg-white rounded-lg p-6 w-full max-w-3xl">
+              <h2 className="text-xl font-bold mb-4">Sửa nội dung</h2>
+              <form onSubmit={handleSubmitSP} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Danh mục cha (Parent ID)
-                  </label>
-                  <select
-                    value={formData.parentId}
-                    onChange={(e) => setFormData({...formData, parentId: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  >
-                    <option value="">Không có (Root)</option>
-                    {getFlattenedMenus().map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tóm tắt
-                  </label>
-                  <textarea
-                    value={formData.summary}
-                    onChange={(e) => setFormData({...formData, summary: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    rows="2"
-                    placeholder="Tóm tắt ngắn gọn về bài viết"
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tên danh mục</label>
+                  <input
+                    type="text"
+                    value={editingSP?.sectionName || ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                    readOnly
                   />
-                </div> */}
-
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nội dung bài viết
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nội dung</label>
                   <div className="border border-gray-300 rounded-lg overflow-hidden">
                     <style>
                       {`
-                        .ck-editor__editable {
-                          min-height: 400px !important;
-                          max-height: 600px !important;
-                        }
-                        .ck.ck-editor__main > .ck-editor__editable {
-                          min-height: 400px !important;
-                          max-height: 600px !important;
-                        }
+                        .ck-editor__editable { min-height: 300px !important; }
+                        .ck.ck-editor__main > .ck-editor__editable { min-height: 300px !important; }
                       `}
                     </style>
                     <CKEditor
                       editor={ClassicEditor}
-                      data={formData.sectionPages[0].content}
+                      data={spForm.content}
                       onChange={(event, editor) => {
                         const data = editor.getData();
-                        setFormData({
-                          ...formData,
-                          sectionPages: [{ ...formData.sectionPages[0], content: data }]
-                        });
+                        setSpForm({ content: data });
                       }}
                       config={{
                         toolbar: [
-                          'heading',
-                          '|',
-                          'bold',
-                          'italic',
-                          'link',
-                          'bulletedList',
-                          'numberedList',
-                          '|',
-                          'outdent',
-                          'indent',
-                          '|',
-                          'blockQuote',
-                          'insertTable',
-                          'undo',
-                          'redo'
+                          'heading','|','bold','italic','link','bulletedList','numberedList','|','blockQuote','insertTable','undo','redo'
                         ],
-                        placeholder: 'Nhập nội dung bài viết...'
+                        placeholder: 'Nhập nội dung...'
                       }}
                     />
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Media (URL, cách nhau bởi dấu phẩy)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.sectionPages[0].media.join(',')}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      sectionPages: [{ ...formData.sectionPages[0], media: e.target.value.split(',').map(s => s.trim()) }]
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={() => { setShowSPModal(false); setEditingSP(null); }}
                     className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                   >
                     Hủy
@@ -424,13 +218,97 @@ const Articles = () => {
                     type="submit"
                     className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                   >
-                    {editingArticle ? 'Cập nhật' : 'Thêm mới'}
+                    Lưu
                   </button>
                 </div>
               </form>
             </div>
           </div>
         )}
+
+        {/* Modal add Section Page */}
+        {showAddSPModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-3xl">
+              <h2 className="text-xl font-bold mb-4">Thêm bài viết</h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    if (!addForm.content || !addForm.content.trim()) {
+                      alert('Vui lòng nhập nội dung');
+                      return;
+                    }
+                    await sectionPageService.addSectionPage({ idSection: Number(addForm.sectionId), content: addForm.content });
+                    await loadSectionPages();
+                    setShowAddSPModal(false);
+                  } catch (error) {
+                    console.error('Error adding section page:', error);
+                    alert('Không thể thêm bài viết');
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Chọn danh mục</label>
+                  <select
+                    value={addForm.sectionId}
+                    onChange={(e) => setAddForm({ ...addForm, sectionId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    required
+                  >
+                    <option value="">-- Chọn danh mục --</option>
+                    {flattenMenus(categories).map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nội dung</label>
+                  <div className="border border-gray-300 rounded-lg overflow-hidden">
+                    <style>
+                      {`
+                        .ck-editor__editable { min-height: 300px !important; }
+                        .ck.ck-editor__main > .ck-editor__editable { min-height: 300px !important; }
+                      `}
+                    </style>
+                    <CKEditor
+                      editor={ClassicEditor}
+                      data={addForm.content}
+                      onChange={(event, editor) => {
+                        const data = editor.getData();
+                        setAddForm({ ...addForm, content: data });
+                      }}
+                      config={{
+                        toolbar: [
+                          'heading','|','bold','italic','link','bulletedList','numberedList','|','blockQuote','insertTable','undo','redo'
+                        ],
+                        placeholder: 'Nhập nội dung...'
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSPModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    Lưu
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        
       </div>
     </AdminLayout>
   );

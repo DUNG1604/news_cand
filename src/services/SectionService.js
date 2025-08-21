@@ -15,8 +15,18 @@ const deleteSection = (id) => {
     return Axios.del(url);
 }
 
+const uploadFile = (formData) => {
+    const url = "/files/upload";
+    return Axios.post(url, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+}
+
 export const sectionService = {
     createSection,
     updateSection,
-    deleteSection
+    deleteSection,
+    uploadFile
 };

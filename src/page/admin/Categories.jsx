@@ -4,28 +4,28 @@ import { menuService } from '../../services/MenuService';
 import { sectionService } from '../../services/SectionService';
 import { sectionPageService } from '../../services/SectionPageService';
 import { ChevronRight, ChevronDown } from 'lucide-react';
-import { CKEditor } from '@ckeditor/ckeditor5-react';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+ 
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({
-    index: '',
+    index: 1,
     name: '',
     parentId: '',
     sectionPages: [
       {
         index: 1,
         content: '',
-        media: ['']
+        media: []
       }
     ]
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [expandedIds, setExpandedIds] = useState({});
+  
 
   // Load categories from API
   useEffect(() => {
@@ -61,7 +61,7 @@ const Categories = () => {
       if (editingCategory) {
         // Gọi API update
         const payload = {
-          index: Number(formData.index),
+          index: Number(formData.index) || 1,
           name: formData.name,
           sectionPages: formData.sectionPages.map((p, idx) => ({
             index: Number(p.index) || idx + 1,
@@ -78,13 +78,13 @@ const Categories = () => {
           name: '',
           parentId: '',
           sectionPages: [
-            { index: 1, content: '', media: [''] }
+            { index: 1, content: '', media: [] }
           ]
         });
       } else {
         // Add new category (section)
         const payload = {
-          index: Number(formData.index),
+          index: Number(formData.index) || 1,
           name: formData.name,
           parentId: formData.parentId ? Number(formData.parentId) : null,
           sectionPages: formData.sectionPages.map((p, idx) => ({
@@ -101,7 +101,7 @@ const Categories = () => {
           name: '',
           parentId: '',
           sectionPages: [
-            { index: 1, content: '', media: [''] }
+            { index: 1, content: '', media: [] }
           ]
         });
       }
@@ -115,11 +115,11 @@ const Categories = () => {
   const handleAdd = () => {
     setEditingCategory(null);
     setFormData({
-      index: '',
+      index: 1,
       name: '',
       parentId: '',
       sectionPages: [
-        { index: 1, content: '', media: [''] }
+        { index: 1, content: '', media: [] }
       ]
     });
     setShowModal(true);
@@ -151,7 +151,7 @@ const Categories = () => {
       const sectionPages = res.data.data || [];
       setEditingCategory(category);
       setFormData({
-        index: category.index,
+        index: category.index || 1,
         name: category.name,
         parentId: '', // Không cho sửa parentId
         sectionPages: [
@@ -159,9 +159,9 @@ const Categories = () => {
             ? {
                 index: sectionPages[0].index,
                 content: sectionPages[0].content,
-                media: sectionPages[0].media || ['']
+                media: sectionPages[0].media || []
               }
-            : { index: 1, content: '', media: [''] }
+            : { index: 1, content: '', media: [] }
         ]
       });
       setShowModal(true);
@@ -171,6 +171,8 @@ const Categories = () => {
       setLoading(false);
     }
   };
+
+  
 
   // Thêm hàm toggleExpand
   const toggleExpand = (id) => {
@@ -186,28 +188,26 @@ const Categories = () => {
           const expanded = expandedIds[category.id];
           return (
             <li key={category.id} className="mb-2">
-              <div className={`flex items-center gap-3 py-2 rounded hover:bg-gray-50 transition-all ${level === 0 ? 'font-semibold' : ''} text-base sm:text-lg`}
+              <div className={`flex items-center gap-3 py-2 rounded hover:bg-gray-50 transition-all ${level === 0 ? '' : ''} text-sm`}
                 style={{ paddingLeft: level === 0 ? 0 : 12 }}>
                 {/* Expand/collapse icon */}
                 <div className='cursor-pointer flex items-center'  onClick={() => toggleExpand(category.id)}>
                   {hasChildren ? (
                     <button
-                      className="text-lg focus:outline-none"
+                      className="text-sm focus:outline-none"
                       tabIndex={-1}
                     >
                       <span className="cursor-pointer">
-                        {expanded ? <ChevronDown size={22} /> : <ChevronRight size={22} />}
+                        {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                       </span>
                     </button>
                   ) : (
                     <span className="inline-block w-6" />
                   )}
-                  <span className="text-gray-800">{category.name}</span>
-                  <span className="text-xs text-gray-400 ml-2">ID:{category.id}</span>
-                  <span className="text-xs text-gray-500 ml-2">[{category.index}]</span>
+                  <span className="text-sm font-medium text-gray-900">{category.name}</span>
                 </div>
                 <button
-                  className="text-base text-blue-600 hover:underline ml-2 mb-1 cursor-pointer"
+                  className="ml-2 mb-1 px-3 py-1 text-sm text-blue-600 border border-blue-200 rounded hover:bg-blue-50"
                   onClick={() => {
                     setEditingCategory(null);
                     setFormData({
@@ -219,19 +219,19 @@ const Categories = () => {
                     setShowModal(true);
                   }}
                 >
-                  ➕
+                  Thêm
                 </button>
                 <button
-                  className="text-base text-green-600 hover:underline ml-1 mb-1 cursor-pointer"
+                  className="ml-1 mb-1 px-3 py-1 text-sm text-green-600 border border-green-200 rounded hover:bg-green-50"
                   onClick={() => handleEdit(category)}
                 >
-                  ✏️
+                  Sửa
                 </button>
                 <button
-                  className="text-base text-red-600 hover:underline ml-1 mb-1 cursor-pointer"
+                  className="ml-1 mb-1 px-3 py-1 text-sm text-red-600 border border-red-200 rounded hover:bg-red-50"
                   onClick={() => handleDelete(category.id)}
                 >
-                  🗑️
+                  Xóa
                 </button>
               </div>
               {/* Children */}
@@ -270,7 +270,7 @@ const Categories = () => {
         {/* Categories List */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           {categories.length === 0 ? (
-            <div className="text-gray-500">Không có menu nào</div>
+            <div className="text-sm text-gray-500">Không có menu nào</div>
           ) : (
             renderCategoryTree(categories)
           )}
@@ -278,23 +278,13 @@ const Categories = () => {
 
         {/* Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="fixed inset-0 bg-gray-500/40 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className={`bg-white rounded-xl shadow-xl p-6 ${editingCategory ? 'w-4/5' : 'w-full max-w-lg'}`}>
               <h2 className="text-xl font-bold mb-4">
                 {editingCategory ? 'Sửa menu' : formData.parentId ? 'Thêm menu con' : 'Thêm menu chính'}
               </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Index
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.index}
-                    onChange={e => setFormData({ ...formData, index: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
+                {/* Index mặc định = 1, không hiển thị trường nhập */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tên menu (name)
@@ -306,59 +296,8 @@ const Categories = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
-                {/* Chỉ hiển thị trường Parent ID khi thêm menu con */}
-                {formData.parentId ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Parent ID
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.parentId}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
-                    />
-                  </div>
-                ) : null}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nội dung page đầu tiên (HTML)
-                  </label>
-                  <div className="border border-gray-300 rounded-lg overflow-hidden">
-                    <CKEditor
-                      editor={ClassicEditor}
-                      data={formData.sectionPages[0].content}
-                      onChange={(event, editor) => {
-                        const data = editor.getData();
-                        setFormData({
-                          ...formData,
-                          sectionPages: [{ ...formData.sectionPages[0], content: data }]
-                        });
-                      }}
-                      config={{
-                        toolbar: [
-                          'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
-                          'outdent', 'indent', '|', 'blockQuote', 'insertTable', 'undo', 'redo'
-                        ],
-                        placeholder: 'Nhập nội dung trang đầu tiên...'
-                      }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Media (URL, cách nhau bởi dấu phẩy)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.sectionPages[0].media.join(',')}
-                    onChange={e => setFormData({
-                      ...formData,
-                      sectionPages: [{ ...formData.sectionPages[0], media: e.target.value.split(',').map(s => s.trim()) }]
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
+                {/* Ẩn Parent ID khi thêm menu con, vẫn giữ giá trị trong state để submit */}
+                
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
