@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+
+# Sitemap
+Sitemap: https://camnangtrangtri.vn/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1

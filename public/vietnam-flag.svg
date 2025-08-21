@@ -1,0 +1,8 @@
+<svg width="150" height="100" viewBox="0 0 150 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Red background -->
+  <rect width="150" height="100" fill="#da020e"/>
+  
+  <!-- Yellow star -->
+  <polygon points="75,20 82,42 105,42 87,56 94,78 75,64 56,78 63,56 45,42 68,42" 
+           fill="#ffff00"/>
+</svg>
