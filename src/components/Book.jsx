@@ -127,7 +127,7 @@ const Book = React.memo(({ selectedChapter }) => {
       // PC - Large screens
       return {
         width: 550,
-        height: 800,
+        height: 700,
         minWidth: 315,
         maxWidth: 1000,
         minHeight: 400,
@@ -343,7 +343,7 @@ const Book = React.memo(({ selectedChapter }) => {
     return (
       <div
         className={`page ${isCover ? 'bg-gradient-to-br from-red-600 to-red-800' : 'bg-white'}
-          p-4 sm:p-6 lg:p-10 text-center flex flex-col justify-center items-center h-full box-border
+          p-2 sm:p-6 lg:p-5 text-center flex flex-col justify-center items-center h-full box-border
           shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100`}
         ref={ref}
       >
@@ -385,7 +385,7 @@ const Book = React.memo(({ selectedChapter }) => {
 
   return (
     <BookErrorBoundary selectedChapter={currentChapter}>
-      <div className="perspective-1000 mx-auto w-full p-2 sm:p-4 lg:p-8">
+      <div className="perspective-1000 mx-auto w-full">
         {/* Book spine effect */}
         <div className="relative">
           {/* Book thickness shadow */}

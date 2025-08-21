@@ -186,8 +186,16 @@ const Articles = () => {
                   <div className="border border-gray-300 rounded-lg overflow-hidden">
                     <style>
                       {`
-                        .ck-editor__editable { min-height: 300px !important; }
-                        .ck.ck-editor__main > .ck-editor__editable { min-height: 300px !important; }
+                        .ck-editor__editable { 
+                          min-height: 300px !important;
+                          max-height: 420px !important;
+                          overflow-y: auto !important;
+                        }
+                        .ck.ck-editor__main > .ck-editor__editable {
+                          min-height: 300px !important;
+                          max-height: 420px !important;
+                          overflow-y: auto !important;
+                        }
                       `}
                     </style>
                     <CKEditor
@@ -268,8 +276,16 @@ const Articles = () => {
                   <div className="border border-gray-300 rounded-lg overflow-hidden">
                     <style>
                       {`
-                        .ck-editor__editable { min-height: 300px !important; }
-                        .ck.ck-editor__main > .ck-editor__editable { min-height: 300px !important; }
+                        .ck-editor__editable { 
+                          min-height: 300px !important;
+                          max-height: 500px !important;
+                          overflow-y: auto !important;
+                        }
+                        .ck.ck-editor__main > .ck-editor__editable {
+                          min-height: 300px !important;
+                          max-height: 500px !important;
+                          overflow-y: auto !important;
+                        }
                       `}
                     </style>
                     <CKEditor
