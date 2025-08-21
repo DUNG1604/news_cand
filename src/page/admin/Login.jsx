@@ -99,10 +99,10 @@ const AdminLogin = () => {
         </form>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-sm text-gray-500">
+        {/* <div className="mt-8 text-center text-sm text-gray-500">
           <p>Chỉ dành cho quản trị viên</p>
           <p className="mt-1">Tài khoản mặc định: admin / admin123</p>
-        </div>
+        </div> */}
       </div>
     </div>
   );
