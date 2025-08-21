@@ -63,17 +63,36 @@ const Sidebar = ({ onChapterSelect, searchQuery, data }) => {
     try {
       // Sử dụng API getSectionPageBySectionId thay vì getSectionById
       const response = await sectionPageService.getSectionPageBySectionId(item.id);
-      if (response.data && response.data.data && response.data.data.length > 0) {
-        const sectionData = response.data.data[0];
-        // Tạo object chapter với data từ API
-        const chapterData = {
-          ...sectionData,
-          id: item.id, // Giữ nguyên ID của menu item để active đúng
-          title: item.name,
-          pageNumber: sectionData.index || 1,
-          sectionIcon: "📄"
-        };
-        onChapterSelect && onChapterSelect(chapterData);
+      console.log('API Response:', response);
+      
+      if (response.data && response.data.data) {
+        // Xử lý cả trường hợp data là array hoặc object
+        let sectionData;
+        if (Array.isArray(response.data.data)) {
+          sectionData = response.data.data[0];
+        } else {
+          sectionData = response.data.data;
+        }
+        
+        if (sectionData && sectionData.content) {
+          // Tạo object chapter với data từ API
+          const chapterData = {
+            id: item.id, // Giữ nguyên ID của menu item để active đúng
+            title: item.name,
+            content: sectionData.content, // Lấy content từ API
+            pageNumber: sectionData.index || 1,
+            sectionIcon: "📄",
+            sectionName: sectionData.sectionName || item.name,
+            createDate: sectionData.createDate
+          };
+          console.log('Chapter Data:', chapterData);
+          onChapterSelect && onChapterSelect(chapterData);
+        } else {
+          // Nếu không có content, vẫn toggle expand cho item cha
+          if (item.children && item.children.length > 0) {
+            toggleExpanded(item.id);
+          }
+        }
       } else {
         // Nếu không có data, vẫn toggle expand cho item cha
         if (item.children && item.children.length > 0) {

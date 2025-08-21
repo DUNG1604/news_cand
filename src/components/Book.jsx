@@ -423,10 +423,6 @@ const Book = React.memo(({ selectedChapter }) => {
                     <Page key={idx + 2} number={idx + 2} pageContent={pageContent} />
                   ))
                 : <Page number={2} pageContent={currentChapter?.content} />}
-              {/* Có thể thêm các trang trống nếu muốn đủ 20 trang */}
-              {Array.from({ length: Math.max(0, 20 - 1 - chapterPages.length) }).map((_, idx) => (
-                <Page key={chapterPages.length + 2 + idx} number={chapterPages.length + 2 + idx} />
-              ))}
             </HTMLFlipBook>
           </div>
         </div>
