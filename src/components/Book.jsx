@@ -200,36 +200,7 @@ const Book = React.memo(({ selectedChapter }) => {
     }
   }, [collapsed, isBookReady]);
 
-  // Effect để xử lý việc mở trang 2 khi chọn chapter mới
-  useEffect(() => {
-    if (selectedChapter && isBookReady) {
-      const currentChapterId = selectedChapter.id || selectedChapter.title;
-      
-      // Kiểm tra nếu đây là chapter mới được chọn
-      if (currentChapterId !== lastSelectedChapterId) {
-        setLastSelectedChapterId(currentChapterId);
-        
-        // Đợi một chút để đảm bảo book đã được render hoàn toàn
-        const timer = setTimeout(() => {
-          if (bookRef.current) {
-            try {
-              const pageFlip = bookRef.current.pageFlip();
-              if (pageFlip) {
-                // Luôn mở đến trang 2 khi chọn chapter mới
-                pageFlip.flip(1);
-              }
-            } catch (error) {
-              console.error('Error flipping to page 2:', error);
-            }
-          }
-        }, 1000);
-
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [selectedChapter, isBookReady, lastSelectedChapterId]);
-
-  // Effect bổ sung để đảm bảo lật trang khi book ready
+  // Effect đơn giản để lật trang khi có chapter được chọn
   useEffect(() => {
     if (selectedChapter && isBookReady) {
       const timer = setTimeout(() => {
@@ -240,10 +211,10 @@ const Book = React.memo(({ selectedChapter }) => {
               pageFlip.flip(1);
             }
           } catch (error) {
-            console.error('Error flipping to page 2 on book ready:', error);
+            console.error('Error flipping to page 2:', error);
           }
         }
-      }, 1500);
+      }, 1000);
       
       return () => clearTimeout(timer);
     }
@@ -393,6 +364,7 @@ const Book = React.memo(({ selectedChapter }) => {
         className={`page ${isCover ? 'bg-red-600 bg-opacity-15' : 'bg-white'}
           p-2 sm:p-6 lg:p-5 text-center flex flex-col justify-center items-center h-full box-border
           shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100`}
+        style={{ touchAction: 'none', overflow: 'hidden' }}
         ref={ref}
       >
         {isCover ? (
@@ -449,7 +421,7 @@ const Book = React.memo(({ selectedChapter }) => {
             />
           </div>
         )}
-      <div className="perspective-1000 mx-auto w-full flex items-center justify-center">
+      <div className="perspective-1000 mx-auto w-full flex items-center justify-center" style={{ touchAction: 'none', overscrollBehavior: 'none' }}>
         {/* Book spine effect */}
         <div className="relative">
           {/* Book thickness shadow */}
@@ -457,7 +429,7 @@ const Book = React.memo(({ selectedChapter }) => {
           <div className="absolute -right-0.5 sm:-right-1 top-0.5 sm:top-1 w-full h-full bg-gray-600 rounded-lg transform rotate-0.5 opacity-40"></div>
 
           {/* Main book container */}
-          <div className="relative bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
+          <div className="relative bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden" style={{ touchAction: 'none' }}>
             <HTMLFlipBook
               key={key}
               width={dimensions.width}
@@ -469,7 +441,7 @@ const Book = React.memo(({ selectedChapter }) => {
               maxHeight={dimensions.maxHeight}
               maxShadowOpacity={0.5}
               showCover={true}
-              mobileScrollSupport={true}
+              mobileScrollSupport={false}
               className="bg-white shadow-xl"
               ref={bookRef}
               onFlip={onFlip}
@@ -477,9 +449,9 @@ const Book = React.memo(({ selectedChapter }) => {
               flippingTime={1000}
               usePortrait={true}
               startZIndex={0}
-              autoSize={true}
-              clickEventForward={true}
-              useMouseEvents={true}
+              autoSize={false}
+              clickEventForward={false}
+              useMouseEvents={false}
             >
               <Page number={1} />
               {chapterPages.length > 0
