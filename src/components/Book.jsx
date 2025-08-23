@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState, useEffect, useMemo, useLayoutEffect } from 'react';
+import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import HTMLFlipBook from 'react-pageflip';
 import useStore from '../store/useStore';
 import TTSControls from './TTSControls';
@@ -124,19 +124,6 @@ const Book = React.memo(({ selectedChapter }) => {
   const { isLoading, error, collapsed } = useStore();
   const [chapterPages, setChapterPages] = useState([]);
 
-  // Debounce function
-  const debounce = (func, wait) => {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  };
-
   // Responsive book dimensions - fixed size with larger height
   const dimensions = useMemo(() => {
     if (windowSize.width >= 1024) {
@@ -173,12 +160,12 @@ const Book = React.memo(({ selectedChapter }) => {
   }, [windowSize.width]);
 
   useEffect(() => {
-    const handleResize = debounce(() => {
+    const handleResize = () => {
       setWindowSize({
         width: window.innerWidth,
         height: window.innerHeight
       });
-    }, 150);
+    };
 
     window.addEventListener('resize', handleResize);
     setIsMounted(true);
@@ -213,77 +200,52 @@ const Book = React.memo(({ selectedChapter }) => {
     }
   }, [collapsed, isBookReady]);
 
-  // Effect riêng để xử lý việc mở trang 2 khi chọn chapter mới
+  // Effect để xử lý việc mở trang 2 khi chọn chapter mới
   useEffect(() => {
-    console.log('Effect triggered - selectedChapter:', selectedChapter?.title, 'isBookReady:', isBookReady);
-    
     if (selectedChapter && isBookReady) {
       const currentChapterId = selectedChapter.id || selectedChapter.title;
-      console.log('Current chapter ID:', currentChapterId, 'Last chapter ID:', lastSelectedChapterId);
       
       // Kiểm tra nếu đây là chapter mới được chọn
       if (currentChapterId !== lastSelectedChapterId) {
-        console.log('New chapter selected, will open page 2');
         setLastSelectedChapterId(currentChapterId);
         
         // Đợi một chút để đảm bảo book đã được render hoàn toàn
         const timer = setTimeout(() => {
-          console.log('Timer executed, checking bookRef');
           if (bookRef.current) {
             try {
               const pageFlip = bookRef.current.pageFlip();
-              console.log('PageFlip object:', pageFlip);
               if (pageFlip) {
                 // Luôn mở đến trang 2 khi chọn chapter mới
                 pageFlip.flip(1);
-                console.log('Đã mở trang 2 cho chapter:', selectedChapter.title);
-              } else {
-                console.log('PageFlip object is null or undefined');
               }
             } catch (error) {
               console.error('Error flipping to page 2:', error);
             }
-          } else {
-            console.log('bookRef.current is null');
           }
-        }, 1000); // Tăng thời gian delay
+        }, 1000);
 
         return () => clearTimeout(timer);
-      } else {
-        console.log('Same chapter, not opening page 2');
       }
-    } else {
-      console.log('Conditions not met - selectedChapter:', !!selectedChapter, 'isBookReady:', isBookReady);
     }
   }, [selectedChapter, isBookReady, lastSelectedChapterId]);
 
-  // Effect đơn giản để mở trang 2 khi có chapter được chọn
+  // Effect bổ sung để đảm bảo lật trang khi book ready
   useEffect(() => {
     if (selectedChapter && isBookReady) {
-      console.log('Simple effect - trying to open page 2');
       const timer = setTimeout(() => {
         if (bookRef.current) {
           try {
             const pageFlip = bookRef.current.pageFlip();
             if (pageFlip) {
               pageFlip.flip(1);
-              console.log('Simple effect - opened page 2');
             }
           } catch (error) {
-            console.error('Simple effect error:', error);
+            console.error('Error flipping to page 2 on book ready:', error);
           }
         }
       }, 1500);
       
       return () => clearTimeout(timer);
-    }
-  }, [selectedChapter, isBookReady]);
-
-  useEffect(() => {
-    if (selectedChapter && isBookReady) {
-      setKey(prev => prev + 1);
-      // Chỉ cập nhật key, không mở trang ở đây nữa
-      // Việc mở trang sẽ được xử lý bởi effect riêng
     }
   }, [selectedChapter, isBookReady]);
 
@@ -308,17 +270,29 @@ const Book = React.memo(({ selectedChapter }) => {
   }, [selectedChapter, isBookReady, dimensions]);
 
   const onFlip = useCallback((e) => {
-    console.log('Current page:', e.data);
+    // Chỉ log khi cần thiết để tránh spam console
   }, []);
 
   const onInit = useCallback(() => {
-    console.log('Book initialized');
     setIsBookReady(true);
     setHasError(false);
     
-    // Không tự động mở trang 2 ở đây nữa
-    // Việc mở trang sẽ được xử lý bởi effect riêng khi selectedChapter thay đổi
-  }, []);
+    // Tự động mở trang 2 khi book được khởi tạo và có chapter được chọn
+    if (selectedChapter) {
+      setTimeout(() => {
+        if (bookRef.current) {
+          try {
+            const pageFlip = bookRef.current.pageFlip();
+            if (pageFlip) {
+              pageFlip.flip(1);
+            }
+          } catch (error) {
+            console.error('Error flipping to page 2 on init:', error);
+          }
+        }
+      }, 500);
+    }
+  }, [selectedChapter]);
 
   const handleRetry = useCallback(() => {
     setHasError(false);
@@ -409,13 +383,10 @@ const Book = React.memo(({ selectedChapter }) => {
 
   const currentChapter = selectedChapter || defaultChapter;
 
-  const Page = React.forwardRef((props, ref) => {
+  // Memoize Page component để tránh re-render không cần thiết
+  const Page = React.memo(React.forwardRef((props, ref) => {
     const isCover = props.number === 1;
     const isContentPage = currentChapter && props.number >= 2 && props.pageContent;
-    
-    useEffect(() => {
-      console.log(currentChapter);
-    }, [currentChapter]);
 
     return (
       <div
@@ -466,7 +437,7 @@ const Book = React.memo(({ selectedChapter }) => {
         )}
       </div>
     );
-  });
+  }));
 
   return (
     <BookErrorBoundary selectedChapter={currentChapter}>

@@ -23,7 +23,6 @@
   will-change: transform;
   backface-visibility: hidden;
 }
-
 /* Single page book display */
 .single-page-book .stf__parent {
   display: flex;
@@ -78,7 +77,6 @@
   color: #111827;
   font-weight: 600;
 }
-
 .prose ol {
   counter-reset: list-counter;
   margin-top: 1.25em;
@@ -358,3 +356,4 @@
 .prose > :last-child {
   margin-bottom: 0;
 }
+
