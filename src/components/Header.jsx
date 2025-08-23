@@ -20,7 +20,7 @@ const Header = ({ onSearch }) => {
           />
           <div className="flex flex-col">
             <h1 className="m-0 text-xl font-bold drop-shadow-md md:text-xl text-lg leading-tight">
-              CẨM NANG PHÒNG CHỐNG TỘI PHẠM
+              BAN THANH NIÊN
             </h1>
             <p className="m-0 text-sm opacity-90 font-medium md:text-sm text-xs">
               CÔNG AN TỈNH QUẢNG NINH

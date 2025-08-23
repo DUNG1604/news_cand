@@ -28,9 +28,9 @@ const DefaultLayout = ({ children }) => {
       <div className="flex-1 flex overflow-hidden relative">
         <Sidebar collapsed={collapsed} searchQuery={searchQuery} onChapterSelect={setSelectedChapter} data={menuData} />
         <div className={`flex-1 flex flex-col transition-all duration-500 ease-in-out ${
-          collapsed ? 'ml-[72px]' : 'ml-[350px]'
+          collapsed ? 'ml-[52px]' : 'ml-[350px]'
         }`}>
-          <main className="flex-1 p-6 bg-gray-50 overflow-y-auto">
+          <main className="flex-1 md:p-6 bg-gray-50 mb-3">
             {children}
           </main>
         </div>

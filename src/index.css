@@ -23,6 +23,34 @@
   will-change: transform;
   backface-visibility: hidden;
 }
+
+/* Single page book display */
+.single-page-book .stf__parent {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.single-page-book .stf__wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.single-page-book .stf__page {
+  margin: 0 auto;
+  display: block;
+}
+
+/* Ensure only one page is visible at a time */
+.single-page-book .stf__page:not(.stf__page--active) {
+  display: none;
+}
+
+/* Smooth page transitions */
+.single-page-book .stf__page {
+  transition: all 0.3s ease-in-out;
+}
  
 /* Custom styles for HTML content display */
 .prose {

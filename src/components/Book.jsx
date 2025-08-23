@@ -1,6 +1,8 @@
 import React, { useRef, useCallback, useState, useEffect, useMemo, useLayoutEffect } from 'react';
 import HTMLFlipBook from 'react-pageflip';
 import useStore from '../store/useStore';
+import TTSControls from './TTSControls';
+import picture from '../assets/anhbia.jpg';
 
 // Component để hiển thị HTML content an toàn
 const SafeHTMLContent = ({ content, className = "" }) => {
@@ -61,9 +63,13 @@ function splitHtmlContentByHeight(html, pageHeight, className = "") {
   const container = document.createElement('div');
   container.style.position = 'absolute';
   container.style.visibility = 'hidden';
-  container.style.width = '500px'; // hoặc width trang sách, có thể điều chỉnh
+  container.style.width = '85%'; // Giảm width để tính toán chính xác hơn
   container.style.height = 'auto';
   container.style.pointerEvents = 'none';
+  container.style.padding = '15px';
+  container.style.boxSizing = 'border-box';
+  container.style.lineHeight = '1.6';
+  container.style.fontSize = '14px';
   container.className = className;
   document.body.appendChild(container);
 
@@ -75,13 +81,18 @@ function splitHtmlContentByHeight(html, pageHeight, className = "") {
   let pages = [];
   let currentHtml = '';
   container.innerHTML = '';
+  
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
     container.appendChild(node.cloneNode(true));
-    if (container.offsetHeight > pageHeight) {
-      // Nếu vượt quá chiều cao, lưu lại phần trước đó
-      pages.push(currentHtml);
-      // Reset container và currentHtml
+    
+    // Kiểm tra nếu vượt quá chiều cao cho phép (thêm buffer 10px)
+    if (container.offsetHeight > (pageHeight - 10)) {
+      // Nếu vượt quá, lưu lại phần trước đó (trừ node cuối)
+      if (currentHtml) {
+        pages.push(currentHtml);
+      }
+      // Reset container và bắt đầu với node hiện tại
       container.innerHTML = '';
       container.appendChild(node.cloneNode(true));
       currentHtml = container.innerHTML;
@@ -89,7 +100,11 @@ function splitHtmlContentByHeight(html, pageHeight, className = "") {
       currentHtml = container.innerHTML;
     }
   }
-  if (currentHtml) pages.push(currentHtml);
+  
+  // Thêm trang cuối nếu còn content
+  if (currentHtml) {
+    pages.push(currentHtml);
+  }
 
   document.body.removeChild(container);
   return pages;
@@ -105,6 +120,7 @@ const Book = React.memo(({ selectedChapter }) => {
   });
   const [isBookReady, setIsBookReady] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [lastSelectedChapterId, setLastSelectedChapterId] = useState(null);
   const { isLoading, error, collapsed } = useStore();
   const [chapterPages, setChapterPages] = useState([]);
 
@@ -121,37 +137,37 @@ const Book = React.memo(({ selectedChapter }) => {
     };
   };
 
-  // Responsive book dimensions - moved up to ensure consistent hook order
+  // Responsive book dimensions - fixed size with larger height
   const dimensions = useMemo(() => {
     if (windowSize.width >= 1024) {
       // PC - Large screens
       return {
-        width: 550,
-        height: 700,
-        minWidth: 315,
-        maxWidth: 1000,
-        minHeight: 400,
-        maxHeight: 1533
+        width: 600,
+        height: 900,
+        minWidth: 400,
+        maxWidth: 800,
+        minHeight: 600,
+        maxHeight: 1200,
       };
     } else if (windowSize.width >= 768) {
       // Tablet - Medium screens
       return {
-        width: 450,
-        height: 650,
-        minWidth: 280,
-        maxWidth: 800,
-        minHeight: 350,
-        maxHeight: 1200
+        width: 500,
+        height: 800,
+        minWidth: 350,
+        maxWidth: 700,
+        minHeight: 500,
+        maxHeight: 1000
       };
     } else {
       // Mobile - Small screens
       return {
-        width: 320,
-        height: 500,
-        minWidth: 250,
+        width: 400,
+        height: 700,
+        minWidth: 280,
         maxWidth: 600,
-        minHeight: 300,
-        maxHeight: 900
+        minHeight: 400,
+        maxHeight: 800
       };
     }
   }, [windowSize.width]);
@@ -197,36 +213,93 @@ const Book = React.memo(({ selectedChapter }) => {
     }
   }, [collapsed, isBookReady]);
 
+  // Effect riêng để xử lý việc mở trang 2 khi chọn chapter mới
+  useEffect(() => {
+    console.log('Effect triggered - selectedChapter:', selectedChapter?.title, 'isBookReady:', isBookReady);
+    
+    if (selectedChapter && isBookReady) {
+      const currentChapterId = selectedChapter.id || selectedChapter.title;
+      console.log('Current chapter ID:', currentChapterId, 'Last chapter ID:', lastSelectedChapterId);
+      
+      // Kiểm tra nếu đây là chapter mới được chọn
+      if (currentChapterId !== lastSelectedChapterId) {
+        console.log('New chapter selected, will open page 2');
+        setLastSelectedChapterId(currentChapterId);
+        
+        // Đợi một chút để đảm bảo book đã được render hoàn toàn
+        const timer = setTimeout(() => {
+          console.log('Timer executed, checking bookRef');
+          if (bookRef.current) {
+            try {
+              const pageFlip = bookRef.current.pageFlip();
+              console.log('PageFlip object:', pageFlip);
+              if (pageFlip) {
+                // Luôn mở đến trang 2 khi chọn chapter mới
+                pageFlip.flip(1);
+                console.log('Đã mở trang 2 cho chapter:', selectedChapter.title);
+              } else {
+                console.log('PageFlip object is null or undefined');
+              }
+            } catch (error) {
+              console.error('Error flipping to page 2:', error);
+            }
+          } else {
+            console.log('bookRef.current is null');
+          }
+        }, 1000); // Tăng thời gian delay
+
+        return () => clearTimeout(timer);
+      } else {
+        console.log('Same chapter, not opening page 2');
+      }
+    } else {
+      console.log('Conditions not met - selectedChapter:', !!selectedChapter, 'isBookReady:', isBookReady);
+    }
+  }, [selectedChapter, isBookReady, lastSelectedChapterId]);
+
+  // Effect đơn giản để mở trang 2 khi có chapter được chọn
   useEffect(() => {
     if (selectedChapter && isBookReady) {
-      setKey(prev => prev + 1);
-      // Mở sách đến trang 2 khi có content từ API
-      setTimeout(() => {
+      console.log('Simple effect - trying to open page 2');
+      const timer = setTimeout(() => {
         if (bookRef.current) {
           try {
             const pageFlip = bookRef.current.pageFlip();
             if (pageFlip) {
-              // Luôn mở đến trang 2 để hiển thị content
-              pageFlip.flip(1); // Trang 2 (index 1)
+              pageFlip.flip(1);
+              console.log('Simple effect - opened page 2');
             }
           } catch (error) {
-            console.error('Error flipping to page:', error);
-            setHasError(true);
+            console.error('Simple effect error:', error);
           }
         }
-      }, 100);
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [selectedChapter, isBookReady]);
+
+  useEffect(() => {
+    if (selectedChapter && isBookReady) {
+      setKey(prev => prev + 1);
+      // Chỉ cập nhật key, không mở trang ở đây nữa
+      // Việc mở trang sẽ được xử lý bởi effect riêng
     }
   }, [selectedChapter, isBookReady]);
 
   // Chia nhỏ nội dung khi chapter hoặc kích thước trang thay đổi
   useEffect(() => {
     if (selectedChapter && isBookReady) {
-      // Trừ padding, header, ...
-      const pageHeight = dimensions.height - 120; // Điều chỉnh nếu cần
+      // Tính toán chiều cao thực tế cho content (trừ đi header, padding, margin)
+      const headerHeight = 100; // Header của chapter (giảm xuống)
+      const padding = 60; // Padding top/bottom của page (giảm xuống)
+      const margin = 30; // Margin giữa các element (giảm xuống)
+      const pageHeight = dimensions.height - headerHeight - padding - margin;
+      
       const pages = splitHtmlContentByHeight(
         selectedChapter.content,
         pageHeight,
-        "mb-1 text-sm sm:text-base text-gray-700 leading-relaxed"
+        "text-sm sm:text-base text-gray-700 leading-relaxed"
       );
       setChapterPages(pages);
     } else {
@@ -239,8 +312,12 @@ const Book = React.memo(({ selectedChapter }) => {
   }, []);
 
   const onInit = useCallback(() => {
+    console.log('Book initialized');
     setIsBookReady(true);
     setHasError(false);
+    
+    // Không tự động mở trang 2 ở đây nữa
+    // Việc mở trang sẽ được xử lý bởi effect riêng khi selectedChapter thay đổi
   }, []);
 
   const handleRetry = useCallback(() => {
@@ -272,7 +349,7 @@ const Book = React.memo(({ selectedChapter }) => {
   // Hiển thị loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full w-full min-h-[400px]">
+      <div className="flex items-center justify-center w-full h-full">
         <div className="bg-white rounded-lg shadow-xl p-10 flex flex-col items-center">
           <div className="text-5xl mb-4 animate-spin">⏳</div>
           <h1 className="text-2xl font-bold mb-2 text-yellow-700">Đang tải nội dung...</h1>
@@ -287,7 +364,7 @@ const Book = React.memo(({ selectedChapter }) => {
   // Hiển thị error state
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full w-full min-h-[400px]">
+      <div className="flex items-center justify-center w-full h-full">
         <div className="bg-white rounded-lg shadow-xl p-10 flex flex-col items-center">
           <div className="text-5xl mb-4">⚠️</div>
           <h1 className="text-2xl font-bold mb-2 text-red-700">Đã xảy ra lỗi</h1>
@@ -308,7 +385,7 @@ const Book = React.memo(({ selectedChapter }) => {
   // Nếu chưa chọn chapter nào, hiển thị trang Welcome
   if (!selectedChapter) {
     return (
-      <div className="flex items-center justify-center h-full w-full min-h-[400px]">
+      <div className="flex items-center justify-center w-full h-full">
         <div className="bg-white rounded-lg shadow-xl p-10 flex flex-col items-center">
           <div className="text-5xl mb-4">👋</div>
           <h1 className="text-2xl font-bold mb-2 text-yellow-700">Chào mừng bạn đến với Cẩm nang!</h1>
@@ -342,32 +419,40 @@ const Book = React.memo(({ selectedChapter }) => {
 
     return (
       <div
-        className={`page ${isCover ? 'bg-gradient-to-br from-red-600 to-red-800' : 'bg-white'}
+        className={`page ${isCover ? 'bg-red-600 bg-opacity-15' : 'bg-white'}
           p-2 sm:p-6 lg:p-5 text-center flex flex-col justify-center items-center h-full box-border
           shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100`}
         ref={ref}
       >
         {isCover ? (
-          <div className="cover-design text-white">
-            <div className="cover-title text-lg sm:text-xl lg:text-3xl font-bold mb-4 sm:mb-6 tracking-wider leading-tight">
-              CẨM NANG PHÒNG CHỐNG<br/>TỘI PHẠM VÀ VI PHẠM<br/>PHÁP LUẬT
+          <div className="cover-design text-white relative h-full">
+            {/* Background image */}
+            <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20" 
+                 style={{ backgroundImage: `url(${picture})` }}>
             </div>
-            <div className="cover-subtitle text-lg sm:text-xl lg:text-2xl mb-6 sm:mb-8">ĐOÀN THANH NIÊN</div>
-            <div className="cover-emblem text-4xl sm:text-5xl lg:text-6xl mb-6 sm:mb-8 text-yellow-400">★</div>
+            
+            {/* Content overlay */}
+            <div className="relative z-10 h-full flex flex-col justify-center items-center">
+              <div className="cover-title text-lg sm:text-xl lg:text-3xl font-bold mb-4 sm:mb-6 tracking-wider leading-tight">
+                CẨM NANG PHÒNG CHỐNG<br/>TỘI PHẠM VÀ VI PHẠM<br/>PHÁP LUẬT
+              </div>
+              <div className="cover-subtitle text-lg sm:text-xl lg:text-2xl mb-6 sm:mb-8">ĐOÀN THANH NIÊN</div>
+              <div className="cover-emblem text-4xl sm:text-5xl lg:text-6xl mb-6 sm:mb-8 text-yellow-400">★</div>
+            </div>
           </div>
         ) : isContentPage ? (
-          <div className="chapter-content text-left p-4">
-            <div className="chapter-header mb-4 sm:mb-6 bg-gradient-to-r from-[#fef3c7] to-[#fde68a] p-3 sm:p-4 lg:p-6 rounded-lg border-l-4 border-[#fbbf24]">
-              <div className="flex flex-col sm:flex-row items-center mb-3 sm:mb-4">
-                <div className="chapter-icon text-2xl sm:text-3xl lg:text-4xl mb-2 sm:mb-0 sm:mr-4">{currentChapter?.sectionIcon}</div>
+          <div className="chapter-content text-left p-3 h-full flex flex-col">
+            <div className="chapter-header mb-2 bg-gradient-to-r from-[#fef3c7] to-[#fde68a] p-2 rounded-lg border-l-4 border-[#fbbf24] flex-shrink-0">
+              <div className="flex flex-col sm:flex-row items-center">
+                <div className="chapter-icon text-xl sm:text-2xl mb-1 sm:mb-0 sm:mr-2">{currentChapter?.sectionIcon}</div>
                 <div className="chapter-info text-center sm:text-left">
-                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold mb-1 sm:mb-2 text-gray-800">{currentChapter?.title}</h1>
+                  <h1 className="text-base sm:text-lg font-bold text-gray-800">{currentChapter?.title}</h1>
                 </div>
               </div>
             </div>
-            <div className="page-number text-xs text-gray-500 mb-4 text-center">Trang {props.number}</div>
-            <div className="page-content">
-              <SafeHTMLContent content={props.pageContent} className="mb-1 text-sm sm:text-base text-gray-700 leading-relaxed" />
+            <div className="page-number text-xs text-gray-500 mb-1 text-center flex-shrink-0">Trang {props.number}</div>
+            <div className="page-content flex-1">
+              <SafeHTMLContent content={props.pageContent} className="text-sm sm:text-base text-gray-700 leading-relaxed" />
             </div>
           </div>
         ) : (
@@ -385,7 +470,15 @@ const Book = React.memo(({ selectedChapter }) => {
 
   return (
     <BookErrorBoundary selectedChapter={currentChapter}>
-      <div className="perspective-1000 mx-auto w-full">
+      {selectedChapter && selectedChapter.hasContent !== false && (
+          <div className="mb-6">
+            <TTSControls
+              content={selectedChapter.content}
+              title={selectedChapter.title}
+            />
+          </div>
+        )}
+      <div className="perspective-1000 mx-auto w-full flex items-center justify-center">
         {/* Book spine effect */}
         <div className="relative">
           {/* Book thickness shadow */}

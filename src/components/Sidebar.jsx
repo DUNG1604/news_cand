@@ -6,7 +6,32 @@ import { sectionPageService } from '../services/SectionPageService';
 const Sidebar = ({ onChapterSelect, searchQuery, data }) => {
   const [expandedItems, setExpandedItems] = useState({});
   const [hoveredItem, setHoveredItem] = useState(null);
-  const { collapsed, toggleSidebar, selectedChapter, isLoading, setLoading, setError, clearError } = useStore();
+  const { collapsed, toggleSidebar, setCollapsed, selectedChapter, isLoading, setLoading, setError, clearError } = useStore();
+
+  // Auto-collapse sidebar on small screens
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth < 768; // md breakpoint
+      if (isMobile && !collapsed) {
+        // Tự động thu nhỏ sidebar khi màn hình nhỏ
+        setCollapsed(true);
+      }
+    };
+
+    // Chỉ kiểm tra kích thước màn hình khi component mount, không tự động thu nhỏ
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      setCollapsed(true);
+    }
+
+    // Thêm event listener để theo dõi thay đổi kích thước màn hình
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [setCollapsed]); // Bỏ collapsed khỏi dependencies để tránh loop
 
   // Auto-expand items to show selected chapter
   useEffect(() => {
@@ -56,7 +81,7 @@ const Sidebar = ({ onChapterSelect, searchQuery, data }) => {
   const handleItemClick = async (item) => {
     console.log(item);
     
-    // Cho phép click vào cả item cha và con
+    // Luôn gọi API cho tất cả menu items (cả cha và con)
     setLoading(true);
     clearError();
     
@@ -87,27 +112,14 @@ const Sidebar = ({ onChapterSelect, searchQuery, data }) => {
           };
           console.log('Chapter Data:', chapterData);
           onChapterSelect && onChapterSelect(chapterData);
-        } else {
-          // Nếu không có content, vẫn toggle expand cho item cha
-          if (item.children && item.children.length > 0) {
-            toggleExpanded(item.id);
-          }
-        }
-      } else {
-        // Nếu không có data, vẫn toggle expand cho item cha
-        if (item.children && item.children.length > 0) {
-          toggleExpanded(item.id);
         }
       }
     } catch (error) {
       console.error('Error fetching section content:', error);
       setError('Không thể tải nội dung. Vui lòng thử lại sau.');
       
-      // Fallback: toggle expand cho item cha nếu có children
-      if (item.children && item.children.length > 0) {
-        toggleExpanded(item.id);
-      } else if (item.content && item.pageNumber) {
-        // Fallback: sử dụng data có sẵn nếu có
+      // Fallback: sử dụng data có sẵn nếu có
+      if (item.content && item.pageNumber) {
         onChapterSelect && onChapterSelect(item);
       }
     } finally {
@@ -123,6 +135,21 @@ const Sidebar = ({ onChapterSelect, searchQuery, data }) => {
         return newExpanded;
       });
     }
+    
+    // Đóng sidebar trên màn hình nhỏ sau khi chọn menu item
+    const isMobile = window.innerWidth < 768; // md breakpoint
+    if (isMobile && !collapsed) {
+      // Thêm delay nhỏ để người dùng thấy được item được chọn
+      setTimeout(() => {
+        toggleSidebar();
+      }, 300);
+    }
+  };
+
+  // Hàm riêng để xử lý click vào icon dropdown
+  const handleDropdownClick = (e, itemId) => {
+    e.stopPropagation(); // Ngăn không cho event bubble lên parent
+    toggleExpanded(itemId);
   };
 
   const handleSidebarToggle = (e) => {
@@ -163,9 +190,13 @@ const Sidebar = ({ onChapterSelect, searchQuery, data }) => {
           }`}>
             {item.name}
           </span>
-          {/* Expand/Collapse indicator */}
+          {/* Expand/Collapse indicator - tách riêng click event */}
           {hasChildren && !isItemLoading && (
-            <span className={`ml-2 transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`}>
+            <span 
+              className={`ml-2 transition-transform duration-300 cursor-pointer hover:bg-gray-200 rounded p-1 ${isExpanded ? 'rotate-90' : ''}`}
+              onClick={(e) => handleDropdownClick(e, item.id)}
+              title="Mở rộng/Thu gọn"
+            >
               ▶
             </span>
           )}
