@@ -357,3 +357,39 @@
   margin-bottom: 0;
 }
 
+/* Book page styles to prevent content from being pushed down */
+.book-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.page {
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.page img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.page p {
+  margin: 0.5em 0;
+  text-align: justify;
+}
+
+.page h1, .page h2, .page h3, .page h4, .page h5, .page h6 {
+  margin: 0.5em 0;
+  line-height: 1.2;
+}
+
+/* Ensure content doesn't overflow the page boundaries */
+.page * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
